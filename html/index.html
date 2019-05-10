@@ -1,0 +1,284 @@
+<html>
+
+<head>
+
+<title>Okta + Carmax</title>
+
+<link rel="shortcut icon" href="https://www.okta.com/sites/all/themes/developer/favicon.ico" type="image/vnd.microsoft.icon" />
+
+<!-- css -->
+
+<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+
+<link href="https://getbootstrap.com/docs/4.2/examples/starter-template/starter-template.css" rel="stylesheet" type="text/css">
+
+<link
+	href="https://ok1static.oktacdn.com/assets/js/sdk/okta-signin-widget/2.14.0/css/okta-sign-in.min.css"
+	type="text/css"
+	rel="stylesheet"/>
+
+<!-- javascript -->
+
+<!-- jquery -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+<!-- bootstrap -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+
+<!-- okta login widget -->
+<script
+	src="https://ok1static.oktacdn.com/assets/js/sdk/okta-signin-widget/2.14.0/js/okta-sign-in.min.js"
+	type="text/javascript"></script>
+
+<script src="https://ok1static.oktacdn.com/assets/js/sdk/okta-auth-js/2.0.1/okta-auth-js.min.js" type="text/javascript"></script>
+
+<script>
+
+	var config = {
+		issuer: '{{OKTA_TENANT}}/oauth2/default'
+	}
+
+	var authClient = new OktaAuth(config)
+
+	// if there is a sessionToken in the query string, redirect
+	// and set a cookie
+	var urlParams = new URLSearchParams(window.location.search)
+
+	if (urlParams.has('sessionToken')) {
+		authClient.session.setCookieAndRedirect(urlParams.get('sessionToken'), "http://localhost:3101")
+	}
+	else {
+		authClient.session.get()
+		.then(function(session) {
+			if (session.status === "INACTIVE") {}
+			else {
+				update_ui_logged_in(session.login)
+				console.log("the user has an okta session")
+				console.dir(session)
+			}
+		})
+		.catch(function(err) {
+			console.log("the user does not have a session.")
+		})
+	}
+
+</script>
+
+
+<script>
+
+function close_window(id_name) {
+	$("#" + id_name).hide()
+}
+
+function log_in() {
+	$("#register").hide()
+	$("#widget-container").show()
+}
+
+function register() {
+	$("#register").show()
+	$("#widget-container").hide()
+}
+
+function update_ui_logged_in(username) {
+
+	$("#log_out").show()
+
+	$("#welcome").show()
+
+	$("#un").html(username)
+
+	$("#log_in").hide()
+
+	$("#register_link").hide()
+
+	$("#authn").hide()
+
+	$("#widget-container").hide()
+
+}
+
+function update_ui_logged_out() {
+
+	$("#authn").show()
+
+	$("#id_proof_instrux").hide()
+
+	$("#welcome").hide()
+
+	$("#log_in").show()
+
+	$("#register_link").show()
+
+}
+
+// if the user has an okta session of any kind, then it's ok
+// to save a car
+// just saving a car to local storage for demo purposes
+
+</script>
+
+</head>
+
+<body>
+
+<nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+	<a class="navbar-brand" href="/">Carmax</a>
+	<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+		<span class="navbar-toggler-icon"></span>
+	</button>
+
+	<div class="collapse navbar-collapse" id="navbarsExampleDefault">
+		<ul class="navbar-nav mr-auto">
+
+			<li class="nav-item active">
+				<a class="nav-link" href="#" onclick="log_out()" style="display:none" id="log_out">Log out</span></a>
+			</li>
+
+			<li class="nav-item active">
+				<a class="nav-link" href="#" onclick="log_in()" style="display:none" id="log_in">Log in</span></a>
+			</li>
+
+			<li class="nav-item active">
+				<a class="nav-link" href="#" onclick="register()" style="display:none" id="register_link">Register</span></a>
+			</li>
+
+		</ul>
+	</div>
+</nav>
+
+<main role="main" class="container">
+	<div class="starter-template">
+
+		<div class="row">
+
+			<div class="col">
+
+				<h2>Welcome to Carmax!</h2>
+
+				<div id = "welcome" style = "display: none">
+					<p>It's great to have you here, <span id="un" style="background: yellow"></span>!</p>
+				</div>
+
+				<div id = "authn" style = "display: none">
+					<p class="lead" style="margin-top:20px">Please sign in or register to get started.</p>
+
+					<div id = "widget-container" style = "display: none"></div>
+				</div>
+
+				<div id = "register" style = "display:none">
+					<form action = "/register" method = "post">
+
+						email: <input type = "text" name = "email" size = 25>
+
+						<input type = "submit" name = "submit">
+
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+</main>
+
+
+
+<script>
+
+var signIn = new OktaSignIn({
+	baseUrl: '{{OKTA_TENANT}}',
+	clientId: '{{CLIENT_ID}}',
+	redirectUri: '{{REDIRECT_URI}}',
+	authParams: {
+		responseType: 'id_token',
+		scopes: ['openid', 'email', 'profile', 'address', 'phone'],
+		display: 'page'
+	},
+	features: {
+		passwordlessAuth: true
+	}
+})
+
+// First, check to see if we have any tokens in the url
+if (signIn.token.hasTokensInUrl()) {
+	console.log("found at least one token in the url.")
+
+	signIn.token.parseTokensFromUrl(
+		function success(res) {
+			signIn.tokenManager.add('id_token', res)
+
+			location.replace('{{REDIRECT_URI}}')
+		},
+		function error(err) {
+			console.dir(err)
+		}
+	)
+}
+else {
+	console.log("no id token in the url.")
+
+	signIn.tokenManager.on('expired', function (key, expiredToken) {
+		console.log('Token with key', key, ' has expired:')
+		console.log(expiredToken)
+		signIn.tokenManager.remove('key')
+	})
+
+	if (signIn.tokenManager.get('id_token')) {
+
+		var obj = signIn.tokenManager.get('id_token')
+
+		console.log("there is an id token in the token manager")
+
+		console.dir(obj)
+
+		var has_been_proofed = false
+
+		if (obj.claims.proofed) { // user profile has a value for "proofed"
+
+			if (obj.claims.proofed === "true") {
+				console.log("the user has been proofed.")
+
+				has_been_proofed = true
+			}
+		}
+
+		update_ui_logged_in(obj.claims.given_name, has_been_proofed)
+	}
+	else {
+		console.log("no id token in the okta token manager.")
+
+		update_ui_logged_out()
+
+		signIn.renderEl(
+			{el: '#widget-container'},
+			function success(res) {
+				if (res.status === "SUCCESS") {
+					res.session.setCookieAndRedirect('{{REDIRECT_URI}}')
+				}
+			},
+			function(err) { console.dir(err)}
+		)
+	}
+}
+
+function log_out() {
+	localStorage.clear()
+
+	sessionStorage.clear()
+
+	signIn.tokenManager.clear()
+
+	signIn.session.close(function (err) {
+		if (err) {
+			// The user has not been logged out, perform some error handling here.
+			return;
+		}
+		location.replace('{{REDIRECT_URI}}')
+	})
+}
+
+</script>
+
+</body>
+
+</html>
